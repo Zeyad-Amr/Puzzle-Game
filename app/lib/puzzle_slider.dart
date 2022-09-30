@@ -2,7 +2,8 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:image/image.dart' as image;
+import 'package:flutter/services.dart';
+import 'package:image/image.dart' as imgPrefix;
 
 class PuzzleSlider extends StatefulWidget {
   final Size size;
@@ -34,7 +35,7 @@ class _PuzzleSliderState extends State<PuzzleSlider> {
   List<SlideObject>? slideObjects;
 
   /// image load with renderer
-  image.Image? fullImage;
+  imgPrefix.Image? fullImage;
 
   /// success flag
   bool success = false;
@@ -77,11 +78,12 @@ class _PuzzleSliderState extends State<PuzzleSlider> {
                     return Positioned(
                         left: slideObject.posCurrent!.dx,
                         top: slideObject.posCurrent!.dy,
-                        child: SizedBox(
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
                           width: slideObject.size!.width,
                           height: slideObject.size!.height,
                           child: Container(
-                            color: Colors.yellow,
+                            color: Colors.transparent,
                           ),
                         ));
                   }).toList(),
@@ -99,8 +101,18 @@ class _PuzzleSliderState extends State<PuzzleSlider> {
                           child: Container(
                             color: Colors.blue,
                             child: Center(
-                                child:
-                                    Text(slideObject.indexDefault.toString())),
+                                child: Stack(
+                              children: [
+                                if (slideObject.image != null) ...[
+                                  slideObject.image!
+                                ],
+                                Text(
+                                  slideObject.indexDefault.toString(),
+                                  style: const TextStyle(
+                                      color: Colors.white, fontSize: 20),
+                                ),
+                              ],
+                            )),
                           ),
                         ));
                   }).toList()
@@ -130,7 +142,7 @@ class _PuzzleSliderState extends State<PuzzleSlider> {
     var byteData = await img.toByteData(format: ImageByteFormat.png);
     var pngBytes = byteData!.buffer.asUint8List();
 
-    return image.decodeImage(pngBytes);
+    return imgPrefix.decodeImage(pngBytes);
   }
 
   /// methode to generate puzzle
@@ -153,14 +165,32 @@ class _PuzzleSliderState extends State<PuzzleSlider> {
         index % widget.puzzleSize * sizeBox.width,
         index ~/ widget.puzzleSize * sizeBox.height,
       );
+
+      imgPrefix.Image? tempCrop;
+      if (fullImage != null) {
+        tempCrop = imgPrefix.copyCrop(
+          fullImage!,
+          offsetTemp.dx.round(),
+          offsetTemp.dy.round(),
+          sizeBox.width.round(),
+          sizeBox.height.round(),
+        );
+      }
+
       return SlideObject(
-        posCurrent: offsetTemp,
-        posDefault: offsetTemp,
-        indexCurrent: index,
-        indexDefault: index + 1,
-        size: sizeBox,
-      );
+          posCurrent: offsetTemp,
+          posDefault: offsetTemp,
+          indexCurrent: index,
+          indexDefault: index + 1,
+          size: sizeBox,
+          image: tempCrop == null
+              ? null
+              : Image.memory(
+                  Uint8List.fromList(imgPrefix.encodePng(tempCrop)),
+                  fit: BoxFit.contain,
+                ));
     });
+    slideObjects!.last.empty = true;
     setState(() {});
   }
 }

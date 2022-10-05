@@ -22,6 +22,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "2.1.0"
+  carousel_slider:
+    dependency: transitive
+    description:
+      name: carousel_slider
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "4.1.1"
   characters:
     dependency: transitive
     description:
@@ -29,6 +36,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "1.2.1"
+  clip_shadow:
+    dependency: transitive
+    description:
+      name: clip_shadow
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "0.2.1"
   clock:
     dependency: transitive
     description:
@@ -69,6 +83,13 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_jigsaw_puzzle:
+    dependency: "direct main"
+    description:
+      name: flutter_jigsaw_puzzle
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "0.1.0"
   flutter_lints:
     dependency: "direct dev"
     description:

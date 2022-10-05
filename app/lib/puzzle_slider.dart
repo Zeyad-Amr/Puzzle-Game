@@ -1,9 +1,10 @@
+import 'dart:math';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
-import 'package:image/image.dart' as imgPrefix;
+import 'package:image/image.dart' as image;
 
 class PuzzleSlider extends StatefulWidget {
   final Size size;
@@ -35,7 +36,7 @@ class _PuzzleSliderState extends State<PuzzleSlider> {
   List<SlideObject>? slideObjects;
 
   /// image load with renderer
-  imgPrefix.Image? fullImage;
+  image.Image? fullImage;
 
   /// success flag
   bool success = false;
@@ -83,7 +84,15 @@ class _PuzzleSliderState extends State<PuzzleSlider> {
                           width: slideObject.size!.width,
                           height: slideObject.size!.height,
                           child: Container(
-                            color: Colors.transparent,
+                            color: Colors.white24,
+                            child: Stack(children: [
+                              if (slideObject.image != null) ...[
+                                Opacity(
+                                  opacity: 0.4,
+                                  child: slideObject.image,
+                                )
+                              ],
+                            ]),
                           ),
                         ));
                   }).toList(),
@@ -94,25 +103,28 @@ class _PuzzleSliderState extends State<PuzzleSlider> {
                     return Positioned(
                         left: slideObject.posCurrent!.dx,
                         top: slideObject.posCurrent!.dy,
-                        child: Container(
-                          padding: const EdgeInsets.all(2),
-                          width: slideObject.size!.width,
-                          height: slideObject.size!.height,
+                        child: GestureDetector(
+                          onTap: () => changePos(slideObject.indexCurrent!),
                           child: Container(
-                            color: Colors.blue,
-                            child: Center(
-                                child: Stack(
-                              children: [
-                                if (slideObject.image != null) ...[
-                                  slideObject.image!
+                            padding: const EdgeInsets.all(2),
+                            width: slideObject.size!.width,
+                            height: slideObject.size!.height,
+                            child: Container(
+                              color: Colors.blue,
+                              child: Center(
+                                  child: Stack(
+                                children: [
+                                  if (slideObject.image != null) ...[
+                                    slideObject.image!
+                                  ],
+                                  Text(
+                                    slideObject.indexDefault.toString(),
+                                    style: const TextStyle(
+                                        color: Colors.white, fontSize: 20),
+                                  ),
                                 ],
-                                Text(
-                                  slideObject.indexDefault.toString(),
-                                  style: const TextStyle(
-                                      color: Colors.white, fontSize: 20),
-                                ),
-                              ],
-                            )),
+                              )),
+                            ),
                           ),
                         ));
                   }).toList()
@@ -142,7 +154,7 @@ class _PuzzleSliderState extends State<PuzzleSlider> {
     var byteData = await img.toByteData(format: ImageByteFormat.png);
     var pngBytes = byteData!.buffer.asUint8List();
 
-    return imgPrefix.decodeImage(pngBytes);
+    return image.decodeImage(pngBytes);
   }
 
   /// methode to generate puzzle
@@ -166,9 +178,9 @@ class _PuzzleSliderState extends State<PuzzleSlider> {
         index ~/ widget.puzzleSize * sizeBox.height,
       );
 
-      imgPrefix.Image? tempCrop;
+      image.Image? tempCrop;
       if (fullImage != null) {
-        tempCrop = imgPrefix.copyCrop(
+        tempCrop = image.copyCrop(
           fullImage!,
           offsetTemp.dx.round(),
           offsetTemp.dy.round(),
@@ -186,11 +198,138 @@ class _PuzzleSliderState extends State<PuzzleSlider> {
           image: tempCrop == null
               ? null
               : Image.memory(
-                  Uint8List.fromList(imgPrefix.encodePng(tempCrop)),
+                  Uint8List.fromList(image.encodePng(tempCrop)),
                   fit: BoxFit.contain,
                 ));
     });
     slideObjects!.last.empty = true;
+
+    // make random.. im using smple method..just rndom with move it.. haha
+
+    // setup moveMethod 1st
+    // proceed with swap block place
+    // swap true - we swap horizontal line.. false - vertical
+    bool swap = true;
+    // process = [];
+
+    // 20 * size puzzle shuffle
+    for (var i = 0; i < widget.puzzleSize * 20; i++) {
+      for (var j = 0; j < widget.puzzleSize / 2; j++) {
+        SlideObject slideObjectEmpty = getEmptyObject();
+
+        // get index of empty slide object
+        int emptyIndex = slideObjectEmpty.indexCurrent!;
+        // process.add(emptyIndex);
+        int randKey;
+
+        if (swap) {
+          // horizontal swap
+          int row = emptyIndex ~/ widget.puzzleSize;
+          randKey =
+              row * widget.puzzleSize + Random().nextInt(widget.puzzleSize);
+        } else {
+          int col = emptyIndex % widget.puzzleSize;
+          randKey =
+              widget.puzzleSize * Random().nextInt(widget.puzzleSize) + col;
+        }
+
+        // call change pos method we create before to swap place
+
+        changePos(randKey);
+        // ops forgot to swap
+        // hmm bug.. :).. let move 1st with click..check whther bug on swap or change pos
+        swap = !swap;
+      }
+    }
+
+    // startSlide = false;
+    // finishSwap = true;
+    setState(() {});
+  }
+
+  // get empty slide object from list
+  SlideObject getEmptyObject() {
+    return slideObjects!.firstWhere((element) => element.empty!);
+  }
+
+  changePos(int indexCurrent) {
+    // problem here i think..
+    SlideObject slideObjectEmpty = getEmptyObject();
+
+    // get index of empty slide object
+    int emptyIndex = slideObjectEmpty.indexCurrent!;
+
+    // min & max index based on vertical or horizontal
+
+    int minIndex = min(indexCurrent, emptyIndex);
+    int maxIndex = max(indexCurrent, emptyIndex);
+
+    // temp list moves involves
+    List<SlideObject> rangeMoves = [];
+
+    // check if index current from vertical / horizontal line
+    if (indexCurrent % widget.puzzleSize == emptyIndex % widget.puzzleSize) {
+      // same vertical line
+      rangeMoves = slideObjects!
+          .where((element) =>
+              element.indexCurrent! % widget.puzzleSize ==
+              indexCurrent % widget.puzzleSize)
+          .toList();
+    } else if (indexCurrent ~/ widget.puzzleSize ==
+        emptyIndex ~/ widget.puzzleSize) {
+      rangeMoves = slideObjects!;
+    } else {
+      rangeMoves = [];
+    }
+
+    rangeMoves = rangeMoves
+        .where((puzzle) =>
+            puzzle.indexCurrent! >= minIndex &&
+            puzzle.indexCurrent! <= maxIndex &&
+            puzzle.indexCurrent != emptyIndex)
+        .toList();
+
+    // check empty index under or above current touch
+    if (emptyIndex < indexCurrent) {
+      rangeMoves.sort((a, b) => a.indexCurrent! < b.indexCurrent! ? 1 : 0);
+    } else {
+      rangeMoves.sort((a, b) => a.indexCurrent! < b.indexCurrent! ? 0 : 1);
+    }
+
+    // check if rangeMOves is exist,, then proceed switch position
+    if (rangeMoves.isNotEmpty) {
+      int tempIndex = rangeMoves[0].indexCurrent!;
+
+      Offset tempPos = rangeMoves[0].posCurrent!;
+
+      // yeayy.. sorry my mistake.. :)
+      for (var i = 0; i < rangeMoves.length - 1; i++) {
+        rangeMoves[i].indexCurrent = rangeMoves[i + 1].indexCurrent;
+        rangeMoves[i].posCurrent = rangeMoves[i + 1].posCurrent;
+      }
+
+      rangeMoves.last.indexCurrent = slideObjectEmpty.indexCurrent;
+      rangeMoves.last.posCurrent = slideObjectEmpty.posCurrent;
+
+      // haha ..i forget to setup pos for empty puzzle box.. :p
+      slideObjectEmpty.indexCurrent = tempIndex;
+      slideObjectEmpty.posCurrent = tempPos;
+    }
+    // this to check if all puzzle box already in default place.. can set callback for success later
+    if (slideObjects!
+                .where((slideObject) =>
+                    slideObject.indexCurrent == slideObject.indexDefault! - 1)
+                .length ==
+            slideObjects!.length
+        // && finishSwap
+        ) {
+      debugPrint("Success");
+      success = true;
+    } else {
+      success = false;
+    }
+
+    // startSlide = true;
     setState(() {});
   }
 }
